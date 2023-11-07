@@ -12,7 +12,12 @@ import android.widget.GridLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import clarkson.ee408.tictactoev4.socket.Request;
+import clarkson.ee408.tictactoev4.socket.Response;
+import client.SocketClient;
 import com.google.gson.Gson;
+
+import static android.opengl.ETC1.isValid;
 
 public class MainActivity extends AppCompatActivity {
     private TicTacToe tttGame;
@@ -192,43 +197,27 @@ public class MainActivity extends AppCompatActivity {
             enableButtons(false); // Disable buttons for the opponent
         }
     }
-    private void requestMove() {
-        // Create a request object with the type "REQUEST_MOVE"
-        Request request = new Request(RequestType.REQUEST_MOVE);
+    public void requestMove() {
+        // Create a request
+        Request request = new Request(Request.RequestType.REQUEST_MOVE, null);
 
-        // Use the SocketClient to send the request in the networkIO thread
-        Thread networkThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                // Use the SocketClient class to send the request to the server
-                // Replace this with your actual networking code
-                // Example: Response response = socketClient.sendRequest(request, Response.class);
+        // Send the request
+        SocketClient client = new SocketClient();
+        client.sendRequest(request);
 
-                // Check if a valid move is received in the response
-                if (response != null && response.isValidMove()) {
-                    // Update the game board in the main thread using runOnUiThread
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            // Call the update() function with the received move
-                            int row = response.getRow();
-                            int col = response.getCol();
-                            update(row, col);
-                        }
-                    });
-                }
-            }
-        });
-        networkThread.start();
+        // Get the response
+        Response response = client.getResponse();
+
+        // Check the response
+        if (response.getStatus() == Response.ResponseStatus.SUCCESS && response.getMessage() != null && !response.getMessage().isEmpty()) {
+            // Update the board
+            update(response);
+        }
     }
     private void sendMove(Move move) {
         // Create a request object with the type "SEND_MOVE" and set the data attribute with a serialized move
-        Request request = new Request(RequestType.SEND_MOVE);
+        Request request = new Request(Request.RequestType.SEND_MOVE);
         request.setData(gson.toJson(move));
-    }
-
-
-    private void requestMove() {
     }
 
 

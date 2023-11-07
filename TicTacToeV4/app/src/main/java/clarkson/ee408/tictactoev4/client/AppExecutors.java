@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package client;
+package clarkson.ee408.tictactoev4.client;
 
 import android.os.Handler;
 import android.os.Looper;

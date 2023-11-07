@@ -104,10 +104,10 @@ public class TicTacToe {
     public int getPlayer() {
         return player;
     }
-    public int getTurn() {
-        return turn;
-    }
     public void setPlayer(int player) {
         this.player = player;
+    }
+    public int getTurn() {
+        return turn;
     }
 }

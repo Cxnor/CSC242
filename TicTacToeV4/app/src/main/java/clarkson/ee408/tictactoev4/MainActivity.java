@@ -12,12 +12,12 @@ import android.widget.GridLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
+import clarkson.ee408.tictactoev4.client.SocketClient;
 import clarkson.ee408.tictactoev4.socket.Request;
 import clarkson.ee408.tictactoev4.socket.Response;
-import client.SocketClient;
-import com.google.gson.Gson;
 
-import static android.opengl.ETC1.isValid;
+import com.google.gson.Gson;
 
 public class MainActivity extends AppCompatActivity {
     private TicTacToe tttGame;
@@ -35,8 +35,6 @@ public class MainActivity extends AppCompatActivity {
         buildGuiByCode();
         gson = new Gson();
         updateTurnStatus();
-
-        // Initialize the handler to request moves every second (adjust the interval as needed)
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -44,10 +42,9 @@ public class MainActivity extends AppCompatActivity {
                     requestMove();
                 }
 
-                // Request moves again after a delay (every second)
                 handler.postDelayed(this, 1000); // 1000 milliseconds = 1 second
             }
-        }, 1000); // Initial delay before the first request (1 second)
+        }, 1000);
     }
 
     public void buildGuiByCode( ) {
@@ -115,7 +112,6 @@ public class MainActivity extends AppCompatActivity {
         // Set gridLayout as the View of this Activity
         setContentView( gridLayout );
     }
-
     public void update( int row, int col ) {
         int play = tttGame.play( row, col );
         if( play == 1 )
@@ -130,6 +126,7 @@ public class MainActivity extends AppCompatActivity {
             showNewGameDialog( );	// offer to play again
         }
     }
+
 
     public void enableButtons( boolean enabled ) {
         for( int row = 0; row < TicTacToe.SIDE; row++ )
@@ -160,8 +157,11 @@ public class MainActivity extends AppCompatActivity {
 
             for( int row = 0; row < TicTacToe.SIDE; row ++ )
                 for( int column = 0; column < TicTacToe.SIDE; column++ )
-                    if( v == buttons[row][column] )
-                        update( row, column );
+                    if( v == buttons[row][column] ) {
+                        Move move = new Move(row, column);
+                        sendMove(move);
+                        update(row, column);
+                    }
         }
     }
 
@@ -198,24 +198,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     public void requestMove() {
-        // Create a request
         Request request = new Request(Request.RequestType.REQUEST_MOVE, null);
-
-        // Send the request
-        SocketClient client = new SocketClient();
-        client.sendRequest(request);
-
-        // Get the response
-        Response response = client.getResponse();
-
-        // Check the response
+        Response response = SocketClient.getInstance().sendRequest(request, Response.class);
         if (response.getStatus() == Response.ResponseStatus.SUCCESS && response.getMessage() != null && !response.getMessage().isEmpty()) {
-            // Update the board
-            update(response);
+            int move = Integer.parseInt(response.getMessage());
+
         }
     }
+
     private void sendMove(Move move) {
-        // Create a request object with the type "SEND_MOVE" and set the data attribute with a serialized move
         Request request = new Request(Request.RequestType.SEND_MOVE);
         request.setData(gson.toJson(move));
     }

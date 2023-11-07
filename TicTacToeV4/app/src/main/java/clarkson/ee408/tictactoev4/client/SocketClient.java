@@ -1,4 +1,4 @@
-package client;
+package clarkson.ee408.tictactoev4.client;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -13,7 +13,7 @@ public class SocketClient {
     private DataOutputStream outputStream;
     private Gson gson;
 
-    private SocketClient() {
+    public SocketClient() {
         // Private constructor to enforce Singleton pattern.
         socket = null;
         inputStream = null;

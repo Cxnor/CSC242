@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.net.Socket;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import model.Event;
+import clarkson.ee408.tictactoev4.model.Event;
 import clarkson.ee408.tictactoev4.socket.*;
 import java.io.EOFException;
 
@@ -33,49 +33,39 @@ public class ServerHandler extends Thread {
             this.inputStream = new DataInputStream(clientSocket.getInputStream());
             this.outputStream = new DataOutputStream(clientSocket.getOutputStream());
             this.gson = new GsonBuilder().serializeNulls().create();
-            this.gameEvent = new Event("senderValue", "opponentValue", "turnValue");
+            this.gameEvent = new Event();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     /**
-     * Handle the SEND_MOVE request.
      *
-     * @param move The move sent by the client.
-     * @return Response indicating the result of the request.
+     * @param move
+     * @return
      */
-    private Response handleSendMove(String move) {
-        // Check if the last move was made by the user (assuming the user is the sender)
+    private Response handleSendMove(int move) {
         if (gameEvent.getTurn().equals(currentUsername)) {
-            // Set the move and change the turn
             gameEvent.setMove(move);
             gameEvent.setTurn(gameEvent.getOpponent());
-
             return new Response(Response.ResponseStatus.SUCCESS, "Move sent successfully.");
+
         } else {
-            // The user can't make consecutive moves, return an error response
             return new Response(Response.ResponseStatus.FAILURE, "It's not your turn to make a move.");
         }
     }
 
-    /**
-     * Handle the REQUEST_MOVE request.
-     *
-     * @return Response containing the opponent's move or indicating no move if not available.
-     */
     private Response handleRequestMove() {
-        String opponentMove = gameEvent.getMove();
-
-        // Check if there's a valid move made by the opponent
-        if (opponentMove != null && !opponentMove.isEmpty()) {
-            // Delete the move from the event
-            gameEvent.setMove(null);
-            return new Response(Response.ResponseStatus.SUCCESS, opponentMove);
+        int opponentMove = gameEvent.getMove();
+        if (opponentMove != -1) {
+            String move = Integer.toString(opponentMove);
+            gameEvent.setMove(-1);
+            return new Response(Response.ResponseStatus.SUCCESS, move);
         } else {
-            return new Response(Response.ResponseStatus.SUCCESS, "-1"); // No move made by the opponent
+            return new Response(Response.ResponseStatus.SUCCESS, "-1");
         }
     }
+
 
     /**
      * Handle a general request.
@@ -86,7 +76,7 @@ public class ServerHandler extends Thread {
     public Response handleRequest(Request request) {
         switch (request.getType()) {
             case SEND_MOVE:
-                return handleSendMove(request.getData());
+                return handleSendMove(gameEvent.getMove());
             case REQUEST_MOVE:
                 return handleRequestMove();
             default:
@@ -122,29 +112,18 @@ public class ServerHandler extends Thread {
     public void run() {
         try {
             while (true) {
-                // Read the serialized request from the client
                 String serializedRequest = inputStream.readUTF();
-
-                // Deserialize the request using Gson
                 Request request = gson.fromJson(serializedRequest, Request.class);
-
-                // Handle the request to get a response
                 Response response = handleRequest(request);
-
-                // Serialize the response
                 String serializedResponse = gson.toJson(response);
-
-                // Write the response to the client
                 outputStream.writeUTF(serializedResponse);
                 outputStream.flush();
             }
         } catch (EOFException e) {
-            // Client disconnected (EOFException is thrown)
             System.out.println("Client " + currentUsername + " disconnected.");
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            // Close the connection when the loop exits
             close();
         }
     }

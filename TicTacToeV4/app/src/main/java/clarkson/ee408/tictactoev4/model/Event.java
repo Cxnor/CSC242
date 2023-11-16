@@ -24,6 +24,12 @@ public class Event {
         this.turn = turn;
         this.move = move;
     }
+    public Event(String sender, String opponent, String turn) {
+        this.sender = sender;
+        this.opponent = opponent;
+        this.status = EventStatus.PENDING; // Default status
+        this.turn = turn;
+    }
 
 
     // Getters
@@ -78,11 +84,13 @@ public class Event {
 
     @Override
     public boolean equals(Object obj) {
-        try {
-            Event other = (Event) obj;
-            return this.eventId == other.getEventId();
-        } catch (ClassCastException e) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
+        Event otherEvent = (Event) obj;
+        return eventId == otherEvent.eventId;
     }
 }

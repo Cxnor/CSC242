@@ -6,10 +6,6 @@ public class User {
     private String displayName;
     private boolean online;
     public User() {
-        username  = "";
-        password = "";
-        displayName = "";
-        online = false;
     }
     public User(String tempuser, String temppassword, String tempdisplayname, boolean temponline) {
         username  = tempuser;
@@ -52,13 +48,11 @@ public class User {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
+        try {
+            User other = (User) obj;
+            return this.username.equals(other.getUsername());
+        } catch (ClassCastException e) {
             return false;
         }
-        User otherUser = (User) obj;
-        return username.equals(otherUser.username);
     }
 }

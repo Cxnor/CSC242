@@ -8,10 +8,10 @@ public class User {
     public User() {
     }
     public User(String tempuser, String temppassword, String tempdisplayname, boolean temponline) {
-        this.username  = tempuser;
-        this.password = temppassword;
-        this.displayName = tempdisplayname;
-        this.online = temponline;
+        username  = tempuser;
+        password = temppassword;
+        displayName = tempdisplayname;
+        online = temponline;
     }
 
     public String getUsername() {
@@ -46,12 +46,6 @@ public class User {
         this.online = online;
     }
 
-
-    /**
-     *
-     * @param obj instance of the other User object
-     * @return true if both objects have equal {@link #username}
-     */
     @Override
     public boolean equals(Object obj) {
         try {
@@ -62,3 +56,4 @@ public class User {
         }
     }
 }
+

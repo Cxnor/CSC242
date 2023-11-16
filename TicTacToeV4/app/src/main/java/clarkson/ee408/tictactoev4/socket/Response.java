@@ -59,4 +59,3 @@ public class Response {
         this.message = message;
     }
 }
-

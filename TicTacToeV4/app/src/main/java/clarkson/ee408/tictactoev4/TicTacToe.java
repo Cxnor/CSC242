@@ -12,8 +12,8 @@ public class TicTacToe {
     }
     public TicTacToe(int startingPlayer) {
         game = new int[SIDE][SIDE];
+        this.player = startingPlayer;
         resetGame();
-        setPlayer(startingPlayer);
     }
 
     public int play( int row, int col ) {
@@ -93,12 +93,14 @@ public class TicTacToe {
     public String result() {
         int winner = whoWon();
 
-        if (winner == getPlayer()) {
+        if (winner == player) {
             return "You Won";
-        } else if (winner == 0 && canNotPlay()) {
+        } else if (winner > 0) {
+            return "You Lost";
+        } else if (canNotPlay()){
             return "Tie Game";
         } else {
-            return "You Lost";
+            return "Play!!";
         }
     }
     public int getPlayer() {

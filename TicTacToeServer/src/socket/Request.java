@@ -12,23 +12,44 @@ public class Request {
     public Request() {
     }
 
+    /**
+     *
+     * @param type
+     * @param data
+     */
     public Request(RequestType type, String data) {
         this.type = type;
         this.data = data;
     }
 
+    /**
+     *
+     * @return
+     */
     public RequestType getType() {
         return type;
     }
 
+    /**
+     *
+     * @return
+     */
     public String getData() {
         return data;
     }
 
+    /**
+     *
+     * @param type
+     */
     public void setType(RequestType type) {
         this.type = type;
     }
 
+    /**
+     *
+     * @param data
+     */
     public void setData(String data) {
         this.data = data;
     }

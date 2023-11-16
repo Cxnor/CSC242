@@ -10,41 +10,46 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import clarkson.ee408.tictactoev4.client.AppExecutors;
 import clarkson.ee408.tictactoev4.client.SocketClient;
+import clarkson.ee408.tictactoev4.socket.GamingResponse;
 import clarkson.ee408.tictactoev4.socket.Request;
 import clarkson.ee408.tictactoev4.socket.Response;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MAIN_ACTIVITY";
+
     private TicTacToe tttGame;
     private Button [][] buttons;
     private TextView status;
     private Gson gson;
-    private Handler handler = new Handler();
-    private boolean shouldRequestMove = false;
+    private Handler handler;
+    private Runnable refresh;
+
+    private boolean shouldRequestMove;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        tttGame = new TicTacToe();
+        tttGame = new TicTacToe(1);
         buildGuiByCode();
-        gson = new Gson();
+        gson = new GsonBuilder().serializeNulls().create();
         updateTurnStatus();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (shouldRequestMove) {
-                    requestMove();
-                }
-
-                handler.postDelayed(this, 1000); // 1000 milliseconds = 1 second
-            }
-        }, 1000);
+        handler = new Handler();
+        refresh = () -> {
+            if(shouldRequestMove)requestMove();
+            handler.postDelayed(refresh, 500);
+        };
+        handler.post(refresh);
     }
 
     public void buildGuiByCode( ) {
@@ -121,8 +126,8 @@ public class MainActivity extends AppCompatActivity {
         if( tttGame.isGameOver( ) ) {
             status.setBackgroundColor( Color.RED );
             enableButtons( false );
-            updateTurnStatus();
             status.setText( tttGame.result( ) );
+            shouldRequestMove = false;
             showNewGameDialog( );	// offer to play again
         }
     }
@@ -143,7 +148,6 @@ public class MainActivity extends AppCompatActivity {
     public void showNewGameDialog( ) {
         AlertDialog.Builder alert = new AlertDialog.Builder( this );
         alert.setTitle(tttGame.result());
-        alert.setTitle( "This is fun" );
         alert.setMessage( "Do you want to play again?" );
         PlayDialog playAgain = new PlayDialog( );
         alert.setPositiveButton( "YES", playAgain );
@@ -158,32 +162,28 @@ public class MainActivity extends AppCompatActivity {
             for( int row = 0; row < TicTacToe.SIDE; row ++ )
                 for( int column = 0; column < TicTacToe.SIDE; column++ )
                     if( v == buttons[row][column] ) {
-                        Move move = new Move(row, column);
-                        sendMove(move);
+                        sendMove((row * TicTacToe.SIDE) + column);
                         update(row, column);
                     }
         }
     }
 
     private class PlayDialog implements DialogInterface.OnClickListener {
-        public void onClick(DialogInterface dialog, int id) {
-            if (id == -1) /* YES button */ {
-                // Switch the starting player for the next game
-                if (tttGame.getPlayer() == 1) {
-                    tttGame.setPlayer(2); // Set player to 2 for the next game
-                } else {
-                    tttGame.setPlayer(1); // Set player to 1 for the next game
-                }
-
-                tttGame.resetGame();
-                enableButtons(true);
-                resetButtons();
-                status.setBackgroundColor(Color.GREEN);
-                updateTurnStatus(); // Call this to set the initial status and button states.
-            } else if (id == -2) // NO button
-                MainActivity.this.finish();
+        public void onClick( DialogInterface dialog, int id ) {
+            if( id == -1 ) /* YES button */ {
+                tttGame.resetGame( );
+                enableButtons( true );
+                resetButtons( );
+                status.setBackgroundColor( Color.GREEN );
+                status.setText( tttGame.result( ) );
+                tttGame.setPlayer(tttGame.getPlayer() == 1 ? 2:1);
+                updateTurnStatus();
+            }
+            else if( id == -2 ) // NO button
+                MainActivity.this.finish( );
         }
     }
+
     private void updateTurnStatus() {
         if (tttGame.getPlayer() == tttGame.getTurn()) {
             // It's the current player's turn
@@ -197,19 +197,51 @@ public class MainActivity extends AppCompatActivity {
             enableButtons(false); // Disable buttons for the opponent
         }
     }
-    public void requestMove() {
-        Request request = new Request(Request.RequestType.REQUEST_MOVE, null);
-        Response response = SocketClient.getInstance().sendRequest(request, Response.class);
-        if (response.getStatus() == Response.ResponseStatus.SUCCESS && response.getMessage() != null && !response.getMessage().isEmpty()) {
-            int move = Integer.parseInt(response.getMessage());
+public void requestMove() {
+    Request request = new Request();
+    request.setType(Request.RequestType.REQUEST_MOVE);
 
-        }
-    }
+    AppExecutors.getInstance().networkIO().execute(()-> {
+        GamingResponse response = SocketClient.getInstance().sendRequest(request, GamingResponse.class);
 
-    private void sendMove(Move move) {
-        Request request = new Request(Request.RequestType.SEND_MOVE);
+        AppExecutors.getInstance().mainThread().execute(()-> {
+            if (response == null) {
+                Toast.makeText(getApplicationContext(), "Network Error", Toast.LENGTH_LONG).show();
+            } else if (response.getStatus() == Response.ResponseStatus.FAILURE) {
+                Toast.makeText(getApplicationContext(), response.getMessage(), Toast.LENGTH_LONG).show();
+            } else if(response.getMove() != -1){
+                // Convert cell id to row and columns
+                int row = response.getMove() / 3;
+                int col = response.getMove() % 3;
+                update(row, col);
+            }
+        });
+    });
+}
+
+    private void sendMove(int move) {
+        Request request = new Request();
+        request.setType(Request.RequestType.SEND_MOVE);
         request.setData(gson.toJson(move));
+
+        Log.e(TAG, "Sending Move: " + move);
+        AppExecutors.getInstance().networkIO().execute(()-> {
+            Response response = SocketClient.getInstance().sendRequest(request, Response.class);
+            AppExecutors.getInstance().mainThread().execute(()-> {
+                if(response == null) {
+                    Toast.makeText(this, "Couldn't send game move", Toast.LENGTH_SHORT).show();
+                } else if(response.getStatus() == Response.ResponseStatus.FAILURE) {
+                    Toast.makeText(this, response.getMessage(), Toast.LENGTH_SHORT).show();
+                }else{ //Success
+                    Log.e(TAG, "Move sent");
+                }
+            });
+        });
     }
 
-
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacks(refresh);
+    }
 }

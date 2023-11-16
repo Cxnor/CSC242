@@ -4,14 +4,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.InetAddress;
 public class SocketServer {
-    private static final int PORT = 5000;
-
+    private final int PORT;
+    private ServerSocket serverSocket;
     /**
      *
      */
     public SocketServer() {
-        // Call the parameterized constructor with the default port value of 5000
-        this(PORT);
+        this.PORT = 5000;
     }
 
     /**
@@ -19,23 +18,18 @@ public class SocketServer {
      * @param port
      */
     public SocketServer(int port) {
-        // Constructor that sets the constant port number
-        // You can use this constructor to set a custom port if needed
+        this.PORT = port;
     }
 
     /**
      *
      */
     public void setup() {
-        // A method that sets up the server for connection
         try {
-            // Create a ServerSocket and bind it to the specified port
-            ServerSocket serverSocket = new ServerSocket(PORT);
+            serverSocket = new ServerSocket(PORT);
 
             // Get the server's InetAddress
             InetAddress localhost = InetAddress.getLocalHost();
-
-            // Log server information
             System.out.println("Server is listening on the following address:");
             System.out.println("Hostname: " + localhost.getHostName());
             System.out.println("Host Address: " + localhost.getHostAddress());
@@ -50,37 +44,16 @@ public class SocketServer {
      *
      */
     public void startAcceptingRequests() {
-        // A method that starts accepting client requests and handles them in separate threads
         try {
-            ServerSocket serverSocket = new ServerSocket(PORT);
-            System.out.println("Server is listening on port " + PORT);
-
-            // Counter to limit the number of concurrent connections
-            int clientCounter = 0;
-            int maxClients = 2; // Set the maximum number of concurrent clients
-
-            while (true) {
-                if (clientCounter < maxClients) {
-                    Socket clientSocket = serverSocket.accept();
-                    clientCounter++;
-
-                    // Generate a unique username for the client (you can implement your own logic)
-                    String username = "User" + clientCounter;
-
-                    // Create a new ServerHandler instance and start a separate thread for each client
-                    ServerHandler handler = new ServerHandler(clientSocket, username);
-                    handler.start();
-
-                    System.out.println("Client " + username + " connected.");
-                } else {
-                    // You can optionally reject additional connections if you have reached the limit
-                    System.out.println("Connection limit reached. Rejecting new connections.");
-                    // Close the new socket or take other appropriate action
-                    Socket rejectedSocket = serverSocket.accept();
-                    rejectedSocket.close();
-                }
-            }
+            Socket socketPlayer1  = serverSocket.accept();
+            ServerHandler serverHandlerPlayer1 = new ServerHandler(socketPlayer1, "Username1");
+            serverHandlerPlayer1.start();
+            Socket socketPlayer2  = serverSocket.accept();
+            ServerHandler serverHandlerPlayer2 = new ServerHandler(socketPlayer2, "Username2");
+            serverHandlerPlayer2.start();
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e){
             e.printStackTrace();
         }
     }

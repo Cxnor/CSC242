@@ -1,6 +1,6 @@
 package socket;
 
-public class GamingResponse {
+public class GamingResponse extends Response {
     private int move;
     private boolean active;
 
@@ -14,13 +14,13 @@ public class GamingResponse {
 
     /**
      *
+     * @param status
+     * @param message
      * @param move
      * @param active
      */
-    public GamingResponse(int move, boolean active) {
-        // Call the superclass constructor if needed
-        super();
-
+    public GamingResponse(ResponseStatus status, String message, int move, boolean active) {
+        super(status, message);
         this.move = move;
         this.active = active;
     }

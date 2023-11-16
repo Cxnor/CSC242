@@ -1,70 +1,83 @@
 package clarkson.ee408.tictactoev4.server;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class SocketServer {
     private final int PORT;
-
-    public SocketServer() throws Exception {
-        this(5000);
+    private ServerSocket serverSocket;
+    /**
+     *
+     */
+    public SocketServer() {
+        this.PORT = 5000;
     }
 
-    public SocketServer(int port) throws Exception {
-        if (port < 0) {
-            throw new Exception("Port number cannot be negative");
-        }
-        PORT = port;
+    /**
+     *
+     * @param port
+     */
+    public SocketServer(int port) {
+        this.PORT = port;
     }
 
-    public static SocketServer setup() throws Exception {
-        return new SocketServer();
-    }
-
-    public void startAcceptingRequests() {
+    /**
+     *
+     */
+    public void setup() {
         try {
-            ServerSocket serverSocket = new ServerSocket(PORT);
-            System.out.println("Server is listening on port " + PORT);
+            serverSocket = new ServerSocket(PORT);
 
-            int clientCounter = 0;
-            int maxClients = 2;
+            // Get the server's InetAddress
+            InetAddress localhost = InetAddress.getLocalHost();
+            System.out.println("Server is listening on the following address:");
+            System.out.println("Hostname: " + localhost.getHostName());
+            System.out.println("Host Address: " + localhost.getHostAddress());
+            System.out.println("Port: " + PORT);
 
-            while (true) {
-                if (clientCounter < maxClients) {
-                    Socket clientSocket = serverSocket.accept();
-                    clientCounter++;
-
-                    String username = "User" + clientCounter;
-
-                    // Create a new ServerHandler instance and start a separate thread for each client
-                    ServerHandler handler = new ServerHandler(clientSocket, username);
-                    handler.start();
-
-                    System.out.println("Client " + username + " connected.");
-                } else {
-                    // Optionally reject additional connections if you have reached the limit
-                    System.out.println("Connection limit reached. Rejecting new connections.");
-                    // Close the new socket or take other appropriate action
-                    Socket rejectedSocket = serverSocket.accept();
-                    rejectedSocket.close();
-                }
-            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    /**
+     *
+     */
+    public void startAcceptingRequests() {
+        try {
+            Socket socketPlayer1  = serverSocket.accept();
+            ServerHandler serverHandlerPlayer1 = new ServerHandler(socketPlayer1, "Username1");
+            serverHandlerPlayer1.start();
+            Socket socketPlayer2  = serverSocket.accept();
+            ServerHandler serverHandlerPlayer2 = new ServerHandler(socketPlayer2, "Username2");
+            serverHandlerPlayer2.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     *
+     * @return
+     */
     public int getPort() {
+        // Getter for the PORT attribute
         return PORT;
     }
 
+
+    /**
+     *
+     * @param args
+     */
     public static void main(String[] args) {
-        try {
-            SocketServer socketServer = setup();
-            socketServer.startAcceptingRequests();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
+        // The static main method that instantiates the class, sets up the server, and starts accepting requests
+        SocketServer server = new SocketServer();
+        server.setup();
+        server.startAcceptingRequests();
     }
 }

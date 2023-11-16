@@ -10,7 +10,7 @@ public class Event {
     private String opponent;
     private EventStatus status;
     private String turn;
-    private String move;
+    private int move;
 
     public Event() {
         // Default constructor
@@ -22,14 +22,13 @@ public class Event {
         this.opponent = opponent;
         this.status = status;
         this.turn = turn;
-        this.move = null;
+        this.move = move;
     }
     public Event(String sender, String opponent, String turn) {
         this.sender = sender;
         this.opponent = opponent;
         this.status = EventStatus.PENDING; // Default status
         this.turn = turn;
-        this.move = null; // Initialize move as null
     }
 
 
@@ -54,7 +53,7 @@ public class Event {
         return turn;
     }
 
-    public String getMove() {
+    public int getMove() {
         return move;
     }
 
@@ -79,7 +78,7 @@ public class Event {
         this.turn = turn;
     }
 
-    public void setMove(String move) {
+    public void setMove(int move) {
         this.move = move;
     }
 

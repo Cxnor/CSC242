@@ -57,7 +57,6 @@ public class ServerHandler extends Thread {
             return new Response(Response.ResponseStatus.FAILURE, "Invalid Move");
         }
         if(event.getTurn() == null || !event.getTurn().equals(currentUsername)) {
-            // Save the move in the server and return a standard Response
             event.setMove(move);
             event.setTurn(currentUsername);
             databaseHelper.updateEvent(event);
@@ -76,10 +75,8 @@ public class ServerHandler extends Thread {
         Event event = databaseHelper.getEvent(currentEventId);
         GamingResponse response = new GamingResponse();
         response.setStatus(Response.ResponseStatus.SUCCESS);
-        // check if there is a valid move made by my opponent
         if (event.getMove() != -1 && !event.getTurn().equals(currentUsername)){
             response.setMove(event.getMove());
-            // Delete the move
             event.setMove(-1);
             event.setTurn(null);
         }else{
@@ -103,26 +100,31 @@ public class ServerHandler extends Thread {
                 User user_register = gson.fromJson(request.getData(), User.class);
                 return handleRegister(user_register);
             case UPDATE_PAIRING:
-                // Handle UPDATE_PAIRING request
-                break;
+                return handleUpdatePairing();
             case SEND_INVITATION:
-                // Handle SEND_INVITATION request
-                break;
+                String opponent = gson.fromJson(request.getData(), String.class);
+                return handleSendInvitation(opponent);
+            case ACCEPT_INVITATION:
+                int acceptEventId = gson.fromJson(request.getData(), Integer.class);
+                return handleAcceptInvitation(acceptEventId);
+            case DECLINE_INVITATION:
+                int declineEventId = gson.fromJson(request.getData(), Integer.class);
+                return handleDeclineInvitation(declineEventId);
+            case ACKNOWLEDGE_RESPONSE:
+                int acknowledgeEventId = gson.fromJson(request.getData(), Integer.class);
+                return handleAcknowledgeResponse(acknowledgeEventId);
             case SEND_MOVE:
                 int move = gson.fromJson(request.getData(), Integer.class);
                 return handleSendMove(move);
             case REQUEST_MOVE:
                 return handleRequestMove();
             case ABORT_GAME:
-                // Handle ABORT_GAME request
-                break;
+                return handleAbortGame();
             case COMPLETE_GAME:
-                // Handle COMPLETE_GAME request
-                break;
+                return handleCompleteGame();
             default:
                 return new Response(Response.ResponseStatus.FAILURE, "Invalid request type.");
         }
-        return null; // added this to fix error it was throwing probably have to remove it.
     }
 
     /**
@@ -130,54 +132,38 @@ public class ServerHandler extends Thread {
      */
     public void close() {
         try {
-            // Close the I/O streams
             if (inputStream != null) {
                 inputStream.close();
             }
             if (outputStream != null) {
                 outputStream.close();
             }
-
-            // Close the client socket
             if (clientSocket != null) {
                 clientSocket.close();
             }
         } catch (IOException e) {
-            // Handle any exceptions that may occur during the close operation
             e.printStackTrace();
         } finally {
-            // Log useful server information (e.g., client disconnection)
             System.out.println("Client disconnected: " + currentUsername);
         }
     }
     public void run() {
         try {
             while (true) {
-                // Read the serialized request from the client
                 String serializedRequest = inputStream.readUTF();
-
-                // Deserialize the request using Gson
                 Request request = gson.fromJson(serializedRequest, Request.class);
-
-                // Handle the request to get a response
                 Response response = handleRequest(request);
-
-                // Serialize the response
                 String serializedResponse = gson.toJson(response);
-
-                // Write the response to the client
                 outputStream.writeUTF(serializedResponse);
                 outputStream.flush();
             }
         } catch (EOFException e) {
-            // Client disconnected (EOFException is thrown)
             System.out.println("Client " + currentUsername + " disconnected.");
         } catch (IOException e) {
             e.printStackTrace();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         } finally {
-            // Close the connection when the loop exits
             close();
         }
     }
@@ -226,12 +212,9 @@ public class ServerHandler extends Thread {
         }
 
         try {
-            // Use database helper functions to get available users and invitations
             List<User> availableUsers = databaseHelper.getAvailableUsers(currentUsername);
             Event userInvitation = databaseHelper.getUserInvitation(currentUsername);
             Event userInvitationResponse = databaseHelper.getUserInvitationResponse(currentUsername);
-
-            // Construct PairingResponse object
             PairingResponse pairingResponse = new PairingResponse(
                     Response.ResponseStatus.SUCCESS,
                     "Pairing information retrieved successfully",
@@ -264,8 +247,122 @@ public class ServerHandler extends Thread {
         }
     }
 
+    public Response handleAcceptInvitation(int eventId) {
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            return new Response(Response.ResponseStatus.FAILURE, "User not logged in");
+        }
+        try {
+            Event invitationEvent = databaseHelper.getEvent(eventId);
+            if (invitationEvent == null || invitationEvent.getStatus() != Event.EventStatus.PENDING) {
+                return new Response(Response.ResponseStatus.FAILURE, "Invalid invitation or invitation already accepted/declined");
+            }
+            if (!invitationEvent.getOpponent().equals(currentUsername)) {
+                return new Response(Response.ResponseStatus.FAILURE, "Invalid invitation for the current user");
+            }
+            invitationEvent.setStatus(Event.EventStatus.ACCEPTED);
+            databaseHelper.abortAllUserEvents(currentUsername);
+            databaseHelper.updateEvent(invitationEvent);
+            currentEventId = eventId;
+            return new Response(Response.ResponseStatus.SUCCESS, "Invitation accepted successfully");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new Response(Response.ResponseStatus.FAILURE, "Error accepting invitation");
+        }
+    }
 
+    private Response handleDeclineInvitation(int eventId) {
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            return new Response(Response.ResponseStatus.FAILURE, "User not logged in");
+        }
+        try {
+            Event invitationEvent = databaseHelper.getEvent(eventId);
+            if (invitationEvent == null || invitationEvent.getStatus() != Event.EventStatus.PENDING) {
+                return new Response(Response.ResponseStatus.FAILURE, "Invalid invitation or invitation already accepted/declined");
+            }
+            if (!invitationEvent.getOpponent().equals(currentUsername)) {
+                return new Response(Response.ResponseStatus.FAILURE, "Invalid invitation for the current user");
+            }
+            invitationEvent.setStatus(Event.EventStatus.DECLINED);
+            databaseHelper.updateEvent(invitationEvent);
+            return new Response(Response.ResponseStatus.SUCCESS, "Invitation declined successfully");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new Response(Response.ResponseStatus.FAILURE, "Error declining invitation");
+        }
+    }
 
+    private Response handleAcknowledgeResponse(int eventId) {
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            return new Response(Response.ResponseStatus.FAILURE, "User not logged in");
+        }
+        try {
+            Event invitationEvent = databaseHelper.getEvent(eventId);
+            if (invitationEvent == null || !invitationEvent.getSender().equals(currentUsername)) {
+                return new Response(Response.ResponseStatus.FAILURE, "Invalid event or not the sender");
+            }
+            if (invitationEvent.getStatus() == Event.EventStatus.PENDING) {
+                return new Response(Response.ResponseStatus.FAILURE, "Response not received yet");
+            }
+            if (invitationEvent.getStatus() == Event.EventStatus.DECLINED) {
+                invitationEvent.setStatus(Event.EventStatus.ABORTED);
+            } else if (invitationEvent.getStatus() == Event.EventStatus.ACCEPTED) {
+                currentEventId = eventId;
+                databaseHelper.abortAllUserEvents(currentUsername);
+            }
+            databaseHelper.updateEvent(invitationEvent);
+            return new Response(Response.ResponseStatus.SUCCESS, "Response acknowledged successfully");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new Response(Response.ResponseStatus.FAILURE, "Error acknowledging response");
+        }
+    }
+
+    // Add these methods in your ServerHandler class
+    private Response handleCompleteGame() {
+        // Check if a user is logged in
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            return new Response(Response.ResponseStatus.FAILURE, "User not logged in");
+        }
+
+        try {
+            Event playingEvent = databaseHelper.getEvent(currentEventId); // Retrieve the event by currentEventId
+            if (playingEvent == null || playingEvent.getStatus() != Event.EventStatus.PLAYING) {
+                return new Response(Response.ResponseStatus.FAILURE, "No game in progress");
+            }
+
+            playingEvent.setStatus(Event.EventStatus.COMPLETED);
+            databaseHelper.updateEvent(playingEvent);
+            currentEventId = -1;
+
+            return new Response(Response.ResponseStatus.SUCCESS, "Game completed successfully");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new Response(Response.ResponseStatus.FAILURE, "Error completing game");
+        }
+    }
+
+    private Response handleAbortGame() {
+        // Check if a user is logged in
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            return new Response(Response.ResponseStatus.FAILURE, "User not logged in");
+        }
+
+        try {
+            Event playingEvent = databaseHelper.getEvent(currentEventId); // Retrieve the event by currentEventId
+            if (playingEvent == null || playingEvent.getStatus() != Event.EventStatus.PLAYING) {
+                return new Response(Response.ResponseStatus.FAILURE, "No game in progress");
+            }
+
+            playingEvent.setStatus(Event.EventStatus.ABORTED);
+            databaseHelper.updateEvent(playingEvent);
+            currentEventId = -1;
+
+            return new Response(Response.ResponseStatus.SUCCESS, "Game aborted successfully");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new Response(Response.ResponseStatus.FAILURE, "Error aborting game");
+        }
+    }
 
 
 

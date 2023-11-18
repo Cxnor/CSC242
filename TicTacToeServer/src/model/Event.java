@@ -30,7 +30,13 @@ public class Event {
         this.status = EventStatus.PENDING; // Default status
         this.turn = turn;
     }
-
+    public Event(String sender, String opponent, EventStatus status, String turn, int move) {
+        this.sender = sender;
+        this.opponent = opponent;
+        this.status = status;
+        this.turn = turn;
+        this.move = move;
+    }
 
     // Getters
     public int getEventId() {

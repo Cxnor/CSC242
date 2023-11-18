@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        tttGame = new TicTacToe(1);
+        tttGame = new TicTacToe();
         buildGuiByCode();
         gson = new GsonBuilder().serializeNulls().create();
         updateTurnStatus();
@@ -129,6 +129,8 @@ public class MainActivity extends AppCompatActivity {
             status.setText( tttGame.result( ) );
             shouldRequestMove = false;
             showNewGameDialog( );	// offer to play again
+        } else {
+            updateTurnStatus();
         }
     }
 

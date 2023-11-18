@@ -3,9 +3,12 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.InetAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 public class SocketServer {
     private final int PORT;
     private ServerSocket serverSocket;
+    private ExecutorService executorService;
     /**
      *
      */
@@ -45,16 +48,27 @@ public class SocketServer {
      */
     public void startAcceptingRequests() {
         try {
-            Socket socketPlayer1  = serverSocket.accept();
-            ServerHandler serverHandlerPlayer1 = new ServerHandler(socketPlayer1, "Username1");
-            serverHandlerPlayer1.start();
-            Socket socketPlayer2  = serverSocket.accept();
-            ServerHandler serverHandlerPlayer2 = new ServerHandler(socketPlayer2, "Username2");
-            serverHandlerPlayer2.start();
+            serverSocket = new ServerSocket(PORT);
+            executorService = Executors.newFixedThreadPool(10);
+
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                ServerHandler serverHandler = new ServerHandler(clientSocket);
+                executorService.submit(serverHandler);
+            }
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (Exception e){
-            e.printStackTrace();
+        } finally {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (executorService != null && !executorService.isShutdown()) {
+                executorService.shutdown();
+            }
         }
     }
 

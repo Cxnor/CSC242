@@ -127,9 +127,7 @@ public class ServerHandler extends Thread {
         }
     }
 
-    /**
-     *
-     */
+
     public void close() {
         try {
             if (inputStream != null) {
@@ -141,12 +139,19 @@ public class ServerHandler extends Thread {
             if (clientSocket != null) {
                 clientSocket.close();
             }
-        } catch (IOException e) {
+            if (currentUsername != null && !currentUsername.isEmpty()) {
+                User user = databaseHelper.getUser(currentUsername);
+                user.setOnline(false);
+                databaseHelper.updateUser(user);
+                databaseHelper.abortAllUserEvents(currentUsername);
+            }
+        } catch (IOException | SQLException e) {
             e.printStackTrace();
         } finally {
             System.out.println("Client disconnected: " + currentUsername);
         }
     }
+
     public void run() {
         try {
             while (true) {
@@ -158,15 +163,16 @@ public class ServerHandler extends Thread {
                 outputStream.flush();
             }
         } catch (EOFException e) {
-            System.out.println("Client " + currentUsername + " disconnected.");
+            System.out.println("Client " + currentUsername + " disconnected due to EOFException.");
         } catch (IOException e) {
             e.printStackTrace();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         } finally {
             close();
         }
     }
+
 
     /**
      * Handle the REGISTER request.

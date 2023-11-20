@@ -190,36 +190,41 @@ public class MainActivity extends AppCompatActivity {
         if (tttGame.getPlayer() == tttGame.getTurn()) {
             // It's the current player's turn
             status.setText("Your Turn");
-            shouldRequestMove = false; // Disable request move
-            enableButtons(true); // Enable buttons for the current player
+            shouldRequestMove = false;
+            enableButtons(true);
         } else {
-            // It's the opponent's turn
             status.setText("Waiting for Opponent");
-            shouldRequestMove = true; // Enable request move
-            enableButtons(false); // Disable buttons for the opponent
+            shouldRequestMove = true;
+            enableButtons(false);
         }
     }
-public void requestMove() {
-    Request request = new Request();
-    request.setType(Request.RequestType.REQUEST_MOVE);
+    public void requestMove() {
+        Request request = new Request();
+        request.setType(Request.RequestType.REQUEST_MOVE);
 
-    AppExecutors.getInstance().networkIO().execute(()-> {
-        GamingResponse response = SocketClient.getInstance().sendRequest(request, GamingResponse.class);
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            GamingResponse response = SocketClient.getInstance().sendRequest(request, GamingResponse.class);
 
-        AppExecutors.getInstance().mainThread().execute(()-> {
-            if (response == null) {
-                Toast.makeText(getApplicationContext(), "Network Error", Toast.LENGTH_LONG).show();
-            } else if (response.getStatus() == Response.ResponseStatus.FAILURE) {
-                Toast.makeText(getApplicationContext(), response.getMessage(), Toast.LENGTH_LONG).show();
-            } else if(response.getMove() != -1){
-                // Convert cell id to row and columns
-                int row = response.getMove() / 3;
-                int col = response.getMove() % 3;
-                update(row, col);
-            }
+            AppExecutors.getInstance().mainThread().execute(() -> {
+                if (response == null) {
+                    Toast.makeText(getApplicationContext(), "Network Error", Toast.LENGTH_LONG).show();
+                } else if (response.getStatus() == Response.ResponseStatus.FAILURE) {
+                    Toast.makeText(getApplicationContext(), response.getMessage(), Toast.LENGTH_LONG).show();
+                } else {
+                    if (!response.isActive()) {
+                        if (response.getMessage().equals("Opponent Abort")) {
+                        } else if (response.getMessage().equals("Opponent Deny Play Again")) {
+                        }
+                    } else if (response.getMove() != -1) {
+                        int row = response.getMove() / 3;
+                        int col = response.getMove() % 3;
+                        update(row, col);
+                    }
+                }
+            });
         });
-    });
-}
+    }
+
 
     private void sendMove(int move) {
         Request request = new Request();

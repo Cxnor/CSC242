@@ -43,12 +43,8 @@ public class SocketServer {
         }
     }
 
-    /**
-     *
-     */
     public void startAcceptingRequests() {
         try {
-            serverSocket = new ServerSocket(PORT);
             executorService = Executors.newFixedThreadPool(10);
 
             while (true) {
@@ -59,18 +55,13 @@ public class SocketServer {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (serverSocket != null && !serverSocket.isClosed()) {
-                try {
-                    serverSocket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            // Do not close the serverSocket here
             if (executorService != null && !executorService.isShutdown()) {
                 executorService.shutdown();
             }
         }
     }
+
 
     /**
      *

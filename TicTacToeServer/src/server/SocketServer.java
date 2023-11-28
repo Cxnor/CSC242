@@ -43,6 +43,9 @@ public class SocketServer {
         }
     }
 
+    /**
+     *
+     */
     public void startAcceptingRequests() {
         try {
             executorService = Executors.newFixedThreadPool(10);

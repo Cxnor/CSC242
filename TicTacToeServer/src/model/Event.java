@@ -90,13 +90,11 @@ public class Event {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
+        try {
+            Event other = (Event) obj;
+            return this.eventId == other.getEventId();
+        } catch (ClassCastException e) {
             return false;
         }
-        Event otherEvent = (Event) obj;
-        return eventId == otherEvent.eventId;
     }
 }

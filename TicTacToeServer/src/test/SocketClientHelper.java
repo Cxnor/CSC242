@@ -51,7 +51,7 @@ public class SocketClientHelper {
      * Can be accessed only the within the class (for singleton design pattern)
      */
     public SocketClientHelper() {
-        String HOSTNAME = "192.168.1.209";
+        String HOSTNAME = "192.168.56.1";
         int PORT = 5000;
 
         LOGGER = Logger.getLogger(SocketServer.class.getName());
@@ -84,9 +84,10 @@ public class SocketClientHelper {
             String serializedResponse = inputStream.readUTF();
             return gson.fromJson(serializedResponse, responseClass);
         } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Error sending or receiving data", e);
-        } finally {
             close();
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
         }
         return null;
     }

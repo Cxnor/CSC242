@@ -36,11 +36,16 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean shouldRequestMove;
 
-
+    /**
+     *
+     * @param savedInstanceState
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        tttGame = new TicTacToe();
+        int player = getIntent().getIntExtra("player", 1);
+        tttGame = new TicTacToe(player);
+        shouldRequestMove = true;
         buildGuiByCode();
         gson = new GsonBuilder().serializeNulls().create();
         updateTurnStatus();
@@ -52,6 +57,9 @@ public class MainActivity extends AppCompatActivity {
         handler.post(refresh);
     }
 
+    /**
+     *
+     */
     public void buildGuiByCode( ) {
         // Get width of the screen
         Point size = new Point( );
@@ -117,6 +125,12 @@ public class MainActivity extends AppCompatActivity {
         // Set gridLayout as the View of this Activity
         setContentView( gridLayout );
     }
+
+    /**
+     *
+     * @param row
+     * @param col
+     */
     public void update( int row, int col ) {
         int play = tttGame.play( row, col );
         if( play == 1 )
@@ -134,19 +148,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
+    /**
+     *
+     * @param enabled
+     */
     public void enableButtons( boolean enabled ) {
         for( int row = 0; row < TicTacToe.SIDE; row++ )
             for( int col = 0; col < TicTacToe.SIDE; col++ )
                 buttons[row][col].setEnabled( enabled );
     }
 
+    /**
+     *
+     */
     public void resetButtons( ) {
         for( int row = 0; row < TicTacToe.SIDE; row++ )
             for( int col = 0; col < TicTacToe.SIDE; col++ )
                 buttons[row][col].setText( "" );
     }
 
+    /**
+     *
+     */
     public void showNewGameDialog( ) {
         AlertDialog.Builder alert = new AlertDialog.Builder( this );
         alert.setTitle(tttGame.result());
@@ -157,7 +180,12 @@ public class MainActivity extends AppCompatActivity {
         alert.show( );
     }
 
+
     private class ButtonHandler implements View.OnClickListener {
+        /**
+         *
+         * @param v
+         */
         public void onClick( View v ) {
             Log.d("button clicked", "button clicked");
 
@@ -171,6 +199,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class PlayDialog implements DialogInterface.OnClickListener {
+        /**
+         *
+         * @param dialog
+         * @param id
+         */
         public void onClick( DialogInterface dialog, int id ) {
             if( id == -1 ) /* YES button */ {
                 tttGame.resetGame( );
@@ -180,25 +213,31 @@ public class MainActivity extends AppCompatActivity {
                 status.setText( tttGame.result( ) );
                 tttGame.setPlayer(tttGame.getPlayer() == 1 ? 2:1);
                 updateTurnStatus();
+                shouldRequestMove = true;
             }
             else if( id == -2 ) // NO button
                 MainActivity.this.finish( );
         }
     }
 
+    /**
+     *
+     */
     private void updateTurnStatus() {
         if (tttGame.getPlayer() == tttGame.getTurn()) {
             // It's the current player's turn
             status.setText("Your Turn");
-            shouldRequestMove = false;
             enableButtons(true);
         } else {
             status.setText("Waiting for Opponent");
-            shouldRequestMove = true;
             enableButtons(false);
         }
     }
-    public void requestMove() {
+
+    /**
+     *
+     */
+    private void requestMove() {
         Request request = new Request();
         request.setType(Request.RequestType.REQUEST_MOVE);
 
@@ -210,22 +249,25 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(), "Network Error", Toast.LENGTH_LONG).show();
                 } else if (response.getStatus() == Response.ResponseStatus.FAILURE) {
                     Toast.makeText(getApplicationContext(), response.getMessage(), Toast.LENGTH_LONG).show();
-                } else {
-                    if (!response.isActive()) {
-                        if (response.getMessage().equals("Opponent Abort")) {
-                        } else if (response.getMessage().equals("Opponent Deny Play Again")) {
-                        }
-                    } else if (response.getMove() != -1) {
-                        int row = response.getMove() / 3;
-                        int col = response.getMove() % 3;
-                        update(row, col);
-                    }
+                } else if (!response.isActive()) {
+                    status.setBackgroundColor(Color.RED);
+                    enableButtons(false);
+                    status.setText(response.getMessage());
+                    shouldRequestMove = false;
+                    tttGame = null;
+                } else if (response.getMove() != -1) {
+                    int row = response.getMove() / 3;
+                    int col = response.getMove() % 3;
+                    update(row, col);
                 }
             });
         });
     }
 
-
+    /**
+     *
+     * @param move
+     */
     private void sendMove(int move) {
         Request request = new Request();
         request.setType(Request.RequestType.SEND_MOVE);
@@ -246,9 +288,59 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     *
+     */
+    private void abortGame() {
+        Request request = new Request();
+        request.setType(Request.RequestType.ABORT_GAME);
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            Response response = SocketClient.getInstance().sendRequest(request, Response.class);
+            AppExecutors.getInstance().mainThread().execute(() -> {
+                if (response == null) {
+                    Toast.makeText(getApplicationContext(), "Error with Network", Toast.LENGTH_LONG).show();
+                } else if (response.getStatus() == Response.ResponseStatus.FAILURE) {
+                    Toast.makeText(getApplicationContext(), response.getMessage(), Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(getApplicationContext(), "Game Aborted", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    /**
+     *
+     */
+    private void completeGame() {
+        Request request = new Request();
+        request.setType(Request.RequestType.COMPLETE_GAME);
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            Response response = SocketClient.getInstance().sendRequest(request, Response.class);
+            AppExecutors.getInstance().mainThread().execute(() -> {
+                if (response == null) {
+                    Toast.makeText(getApplicationContext(), "Error with Network", Toast.LENGTH_LONG).show();
+                } else if (response.getStatus() == Response.ResponseStatus.FAILURE) {
+                    Toast.makeText(getApplicationContext(), response.getMessage(), Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(getApplicationContext(), "Game Completed", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    /**
+     *
+     */
     @Override
     protected void onDestroy() {
         super.onDestroy();
         handler.removeCallbacks(refresh);
+        if(tttGame != null) {
+            if (tttGame.isGameOver()) {
+                completeGame();
+            } else {
+                abortGame();
+            }
+        }
     }
 }

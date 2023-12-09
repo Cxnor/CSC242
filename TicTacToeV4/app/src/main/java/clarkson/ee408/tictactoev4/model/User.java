@@ -13,6 +13,16 @@ public class User {
         displayName = tempdisplayname;
         online = temponline;
     }
+    public User(String username, String password){
+        this.username = username;
+        this.password = password;
+    }
+
+    public User(String username, String password, String displayName){
+        this.username = username;
+        this.password = password;
+        this.displayName = displayName;
+    }
 
     public String getUsername() {
         return username;

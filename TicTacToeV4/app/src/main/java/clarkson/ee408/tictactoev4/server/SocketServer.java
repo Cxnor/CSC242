@@ -1,13 +1,15 @@
 package clarkson.ee408.tictactoev4.server;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-
+import java.net.InetAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 public class SocketServer {
     private final int PORT;
     private ServerSocket serverSocket;
+    private ExecutorService executorService;
     /**
      *
      */
@@ -47,18 +49,23 @@ public class SocketServer {
      */
     public void startAcceptingRequests() {
         try {
-            Socket socketPlayer1  = serverSocket.accept();
-            ServerHandler serverHandlerPlayer1 = new ServerHandler(socketPlayer1, "Username1");
-            serverHandlerPlayer1.start();
-            Socket socketPlayer2  = serverSocket.accept();
-            ServerHandler serverHandlerPlayer2 = new ServerHandler(socketPlayer2, "Username2");
-            serverHandlerPlayer2.start();
+            executorService = Executors.newFixedThreadPool(10);
+
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                ServerHandler serverHandler = new ServerHandler(clientSocket);
+                executorService.submit(serverHandler);
+            }
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (Exception e){
-            e.printStackTrace();
+        } finally {
+            // Do not close the serverSocket here
+            if (executorService != null && !executorService.isShutdown()) {
+                executorService.shutdown();
+            }
         }
     }
+
 
     /**
      *
@@ -81,3 +88,4 @@ public class SocketServer {
         server.startAcceptingRequests();
     }
 }
+
